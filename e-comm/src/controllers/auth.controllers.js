@@ -1,6 +1,7 @@
 const userModel = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const redisInstance = require("../services/redis");
 
 const registerController = async (req, res) => {
   try {
@@ -83,8 +84,21 @@ const loginController = async (req, res) => {
 
 const logoutController = async (req, res) => {
   try {
+    let token = req.cookies.token;
+
+    if (!token)
+      return res.status(404).json({
+        message: "Token not found",
+      });
+
+    await redisInstance.set(token, "blackListed");
+
     res.clearCookie("token");
+    return res.status(200).json({
+      message: "user logged out",
+    });
   } catch (error) {
+    console.log("error in logo", error);
     return res.status(500).json({
       message: "Internal server error",
       error: error,

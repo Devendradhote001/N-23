@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/user.model");
+const redisInstance = require("../services/redis");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -10,7 +11,14 @@ const authMiddleware = async (req, res, next) => {
         message: "Token not found",
       });
 
-    let decode = jwt.verify(token, process.env.JWT_SECERT);
+    let isBlacklisted = await redisInstance.get(token);
+
+    if (isBlacklisted)
+      return res.status(404).json({
+        message: "token blacklist kardiya mene ",
+      });
+
+    let decode = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decode)
       return res.status(403).json({
