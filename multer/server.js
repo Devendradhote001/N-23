@@ -1,33 +1,47 @@
+require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
 const app = express();
 const cors = require("cors");
 const path = require("path");
+const { sendFiles } = require("./src/services/imagekit");
 
 app.use(cors());
 
 app.use(express.static(path.join(__dirname, "uploads")));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Math.random() + file.originalname);
-  },
-});
+app.use(express.json());
+
+const storage = multer.memoryStorage();
 
 const upload = multer({ storage });
 
-app.post("/upload", upload.array("image"), (req, res) => {
-  let path = req.files?.map((elem) => `${elem.filename}`);
-  console.log(path);
+app.post("/upload", upload.array("image"), async (req, res) => {
+  try {
+    let path = req.files?.map((elem) => `${elem.filename}`);
+    console.log(req.files);
 
-  res.send(path);
+    let response = await Promise.all(
+      req.files.map(
+        async (elem) =>
+          await sendFiles({ file: elem.buffer, fileName: elem.originalname })
+      )
+    );
+
+    console.log("image uploaded response ->", response);
+
+    let imagekitURL = response?.map((elem) => elem.url);
+    console.log(imagekitURL);
+    res.send(imagekitURL);
+  } catch (error) {
+    console.log("error", error);
+  }
 });
 
-app.listen(3000, () => {
-  console.log("server is running on port 3000");
+let PORT = process.env.PORT || 4500;
+
+app.listen(PORT, () => {
+  console.log(`server is running on port ${PORT}`);
 });
 
 // Authentication steps---
@@ -55,4 +69,3 @@ app.listen(3000, () => {
 // - response bhejooo
 
 // 7. Home screen check if user not loggedin
-
